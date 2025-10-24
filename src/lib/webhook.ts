@@ -1,5 +1,7 @@
 import { AnalysisResult, LeadData, AIAnalysisResult } from "@/types/analyzer";
 import { APP_CONFIG } from "@/config/appConfig";
+import { retryWithBackoff } from "./retryUtils";
+import { addToWebhookQueue } from "./webhookQueue";
 
 export async function sendToWebhook(result: AIAnalysisResult | AnalysisResult, lead: LeadData): Promise<boolean> {
   if (!APP_CONFIG.webhookUrl) {
@@ -7,8 +9,28 @@ export async function sendToWebhook(result: AIAnalysisResult | AnalysisResult, l
   }
 
   try {
-    // Check if it's the new AI analysis or legacy format
-    const isAIAnalysis = 'gameContext' in result;
+    const success = await retryWithBackoff(
+      () => sendWebhookRequest(result, lead),
+      {
+        maxAttempts: 3,
+        delayMs: 2000,
+        timeoutMs: 10000,
+        onRetry: (attempt, error) => {
+          console.log(`Webhook attempt ${attempt} failed:`, error.message);
+        }
+      }
+    );
+    return success;
+  } catch (error) {
+    console.error("All webhook attempts failed, adding to queue:", error);
+    addToWebhookQueue(result as AIAnalysisResult, lead);
+    return false;
+  }
+}
+
+async function sendWebhookRequest(result: AIAnalysisResult | AnalysisResult, lead: LeadData): Promise<boolean> {
+  // Check if it's the new AI analysis or legacy format
+  const isAIAnalysis = 'gameContext' in result;
 
     const payload = isAIAnalysis ? {
       lead,
@@ -36,17 +58,17 @@ export async function sendToWebhook(result: AIAnalysisResult | AnalysisResult, l
       }
     };
 
-    const response = await fetch(APP_CONFIG.webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
+  const response = await fetch(APP_CONFIG.webhookUrl!, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
 
-    return response.ok;
-  } catch (error) {
-    console.error("Webhook error:", error);
-    return false;
+  if (!response.ok) {
+    throw new Error(`Webhook failed with status ${response.status}`);
   }
+
+  return true;
 }

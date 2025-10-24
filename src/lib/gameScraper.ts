@@ -1,4 +1,6 @@
 import { GameMetadata } from "@/types/analyzer";
+import { retryWithBackoff } from "./retryUtils";
+import { validateGameMetadata } from "./metadataValidator";
 
 interface ScrapedData {
   title?: string;
@@ -15,23 +17,48 @@ interface ScrapedData {
 
 export async function scrapeGameUrl(url: string): Promise<GameMetadata> {
   try {
-    // Use CORS proxy to fetch the page
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const response = await fetch(proxyUrl);
-    
-    if (!response.ok) {
-      throw new Error("Failed to fetch game page");
+    const metadata = await retryWithBackoff(
+      () => fetchAndParseGamePage(url),
+      {
+        maxAttempts: 3,
+        delayMs: 1000,
+        timeoutMs: 15000,
+        onRetry: (attempt, error) => {
+          console.log(`Scraping attempt ${attempt} failed:`, error.message);
+        }
+      }
+    );
+
+    // Validate scraped metadata
+    const validation = validateGameMetadata(metadata);
+    if (!validation.isValid) {
+      console.error("Metadata validation failed:", validation.errors);
+      throw new Error(`Validation failed: ${validation.errors.join(", ")}`);
     }
 
-    const html = await response.text();
-    const data = extractMetadata(html, url);
+    if (validation.warnings.length > 0) {
+      console.warn("Metadata warnings:", validation.warnings);
+    }
 
-    return buildGameMetadata(data, url);
+    return metadata;
   } catch (error) {
     console.error("Scraping error:", error);
-    // Return fallback metadata for manual input
     throw new Error("Could not analyze game URL automatically");
   }
+}
+
+async function fetchAndParseGamePage(url: string): Promise<GameMetadata> {
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  const response = await fetch(proxyUrl);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch game page: ${response.status}`);
+  }
+
+  const html = await response.text();
+  const data = extractMetadata(html, url);
+
+  return buildGameMetadata(data, url);
 }
 
 function extractMetadata(html: string, url: string): ScrapedData {
