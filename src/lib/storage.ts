@@ -1,8 +1,8 @@
-import { AnalysisResult, LeadData } from "@/types/analyzer";
+import { AnalysisResult, LeadData, AIAnalysisResult } from "@/types/analyzer";
 
 const STORAGE_KEY = "evergreen_analysis_results";
 
-export function saveResultToLocal(result: AnalysisResult, lead?: LeadData) {
+export function saveResultToLocal(result: AnalysisResult | AIAnalysisResult, lead?: LeadData) {
   const stored = {
     result,
     lead,

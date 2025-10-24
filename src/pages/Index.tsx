@@ -1,142 +1,74 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
-import { CategorySection } from "@/components/CategorySection";
-import { LeadCaptureForm } from "@/components/LeadCaptureForm";
-import { ReportCard } from "@/components/ReportCard";
-import { EmbedInstructions } from "@/components/EmbedInstructions";
-import { categories } from "@/data/categories";
-import { Answer, AnswerValue, LeadData } from "@/types/analyzer";
-import { calculateScores } from "@/lib/scoring";
-import { saveResultToLocal } from "@/lib/storage";
+import { GameUrlInput } from "@/components/GameUrlInput";
+import { LoadingAnalysis } from "@/components/LoadingAnalysis";
+import { EmailGate } from "@/components/EmailGate";
+import { GameReportCard } from "@/components/GameReportCard";
+import { AIAnalysisResult, LeadData } from "@/types/analyzer";
+import { scrapeGameUrl } from "@/lib/gameScraper";
+import { analyzeGame } from "@/lib/ruleBasedAnalysis";
 import { sendToWebhook } from "@/lib/webhook";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { saveResultToLocal } from "@/lib/storage";
+import { useToast } from "@/hooks/use-toast";
 import { APP_CONFIG } from "@/config/appConfig";
 
-type ViewState = "form" | "lead" | "report";
+type ViewState = "input" | "loading" | "email" | "report";
 
 const Index = () => {
-  const [answers, setAnswers] = useState<Answer[]>([]);
-  const [viewState, setViewState] = useState<ViewState>("form");
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [viewState, setViewState] = useState<ViewState>("input");
+  const [gameUrl, setGameUrl] = useState("");
+  const [analysisResult, setAnalysisResult] = useState<AIAnalysisResult | null>(null);
+  const { toast } = useToast();
 
-  const handleAnswerChange = (categoryId: string, questionId: string, value: AnswerValue) => {
-    setAnswers(prev => {
-      const existing = prev.find(a => a.categoryId === categoryId && a.questionId === questionId);
-      if (existing) {
-        return prev.map(a =>
-          a.categoryId === categoryId && a.questionId === questionId
-            ? { ...a, value }
-            : a
-        );
-      }
-      return [...prev, { categoryId, questionId, value }];
-    });
-  };
+  const handleUrlSubmit = async (url: string) => {
+    setGameUrl(url);
+    setViewState("loading");
 
-  const isFormComplete = () => {
-    const totalQuestions = categories.reduce((sum, cat) => sum + cat.questions.length, 0);
-    return answers.length === totalQuestions;
-  };
-
-  const handleSubmitForm = () => {
-    if (!isFormComplete()) {
-      toast.error("Please answer all questions before submitting");
-      return;
+    try {
+      const metadata = await scrapeGameUrl(url);
+      const result = analyzeGame(metadata, url);
+      setAnalysisResult(result);
+      await new Promise(resolve => setTimeout(resolve, 15000));
+      setViewState("email");
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast({
+        title: "Analysis failed",
+        description: "We couldn't analyze that URL automatically. Please try a different URL.",
+        variant: "destructive"
+      });
+      setViewState("input");
     }
-    setViewState("lead");
   };
 
-  const handleLeadSubmit = async (lead: LeadData) => {
-    const result = calculateScores(answers);
-    setAnalysisResult(result);
-    
-    saveResultToLocal(result, lead);
-    
-    if (APP_CONFIG.webhookUrl && (lead.name || lead.email)) {
-      const success = await sendToWebhook(result, lead);
-      if (success) {
-        toast.success("Report sent successfully");
-      }
+  const handleEmailSubmit = async (lead: LeadData) => {
+    if (!analysisResult) return;
+    saveResultToLocal(analysisResult, lead);
+    try {
+      await sendToWebhook(analysisResult, lead);
+    } catch (error) {
+      console.error("Webhook error:", error);
     }
-    
-    setViewState("report");
-  };
-
-  const handleSkipLead = () => {
-    const result = calculateScores(answers);
-    setAnalysisResult(result);
-    saveResultToLocal(result);
     setViewState("report");
   };
 
   const handleStartNew = () => {
-    setAnswers([]);
+    setViewState("input");
+    setGameUrl("");
     setAnalysisResult(null);
-    setViewState("form");
-    window.scrollTo(0, 0);
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      
-      <main className="flex-1 py-12 px-4">
-        {viewState === "form" && (
-          <div className="max-w-4xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h1 className="text-4xl font-bold text-foreground">
-                Evergreen Readiness Analyzer
-              </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Score the health of your revenue system. Answer 25 questions across 5 categories to identify your strongest opportunities.
-              </p>
-            </div>
-
-            {categories.map((category) => (
-              <CategorySection
-                key={category.id}
-                category={category}
-                answers={answers}
-                onAnswerChange={handleAnswerChange}
-              />
-            ))}
-
-            <div className="flex justify-center pt-8">
-              <Button
-                onClick={handleSubmitForm}
-                disabled={!isFormComplete()}
-                size="lg"
-                className="px-12"
-              >
-                Submit for Analysis
-              </Button>
-            </div>
-
-            <EmbedInstructions />
-          </div>
-        )}
-
-        {viewState === "lead" && (
-          <LeadCaptureForm onSubmit={handleLeadSubmit} onSkip={handleSkipLead} />
-        )}
-
-        {viewState === "report" && analysisResult && (
-          <ReportCard result={analysisResult} onStartNew={handleStartNew} />
-        )}
+      <main className="flex-1 container py-12 px-4">
+        {viewState === "input" && <GameUrlInput onSubmit={handleUrlSubmit} isLoading={false} />}
+        {viewState === "loading" && <LoadingAnalysis />}
+        {viewState === "email" && <EmailGate onSubmit={handleEmailSubmit} />}
+        {viewState === "report" && analysisResult && <GameReportCard result={analysisResult} onStartNew={handleStartNew} />}
       </main>
-
-      <footer className="py-6 px-4 border-t border-border bg-background">
-        <div className="max-w-4xl mx-auto text-center text-sm text-muted-foreground">
-          <a
-            href={APP_CONFIG.scheduleUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-primary transition-colors"
-          >
-            Schedule here
-          </a>
-        </div>
+      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
+        <p>Powered by <a href={APP_CONFIG.brandSourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">{APP_CONFIG.siteName}</a></p>
       </footer>
     </div>
   );

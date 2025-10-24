@@ -1,5 +1,47 @@
 export type AnswerValue = 0 | 1 | 2 | 3;
 
+export type GameArchetype = 
+  | "premium_singleplayer"
+  | "f2p_mobile"
+  | "live_service"
+  | "early_stage"
+  | "aa_premium";
+
+export interface GameMetadata {
+  title: string;
+  platform: 'steam' | 'mobile' | 'console' | 'web' | 'indie';
+  price: number | "free";
+  genre: string[];
+  releaseState: 'upcoming' | 'early_access' | 'live';
+  isMultiplayer: boolean;
+  reviewScore?: number;
+  lastUpdateDate?: string;
+  imageUrl?: string;
+  archetype: GameArchetype;
+}
+
+export interface Opportunity {
+  category: string;
+  diagnosis: string;
+  actions: [string, string];
+  relevance: "critical" | "high" | "medium";
+}
+
+export interface AIAnalysisResult {
+  gameContext: GameMetadata;
+  overallScore: number;
+  opportunities: Opportunity[];
+  gameUrl: string;
+  timestamp: string;
+}
+
+export interface LeadData {
+  email: string;
+  name?: string;
+  company?: string;
+}
+
+// Legacy types for backward compatibility
 export interface Question {
   id: string;
   text: string;
@@ -37,10 +79,4 @@ export interface AnalysisResult {
   lowestCategories: CategoryScore[];
   answers: Answer[];
   timestamp: string;
-}
-
-export interface LeadData {
-  name?: string;
-  email?: string;
-  company?: string;
 }
