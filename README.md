@@ -1,73 +1,138 @@
-# Welcome to your Lovable project
+# Evergreen Readiness Analyzer
 
-## Project info
+A single page tool for studios and publishers to score the health of a revenue system. Built for The Aesop Agency.
 
-**URL**: https://lovable.dev/projects/85af8b35-93d7-4842-98cf-f46d4eaf7bf0
+## Features
 
-## How can I edit this code?
+- 25 question assessment across 5 categories
+- Normalized scoring (0 to 100 per category)
+- Actionable recommendations for lowest scoring areas
+- PDF export of full report
+- Copy summary to clipboard
+- Optional lead capture with webhook integration
+- Embeddable iframe version at /embed
+- No database required (uses localStorage by default)
 
-There are several ways of editing your application.
+## Quick Start
 
-**Use Lovable**
+```bash
+# Install dependencies
+npm install
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/85af8b35-93d7-4842-98cf-f46d4eaf7bf0) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Run development server
 npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
 ```
 
-**Edit a file directly in GitHub**
+## Configuration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Webhook Setup (Optional)
 
-**Use GitHub Codespaces**
+To enable lead capture with webhook integration:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. Create a `.env` file in the project root
+2. Add your webhook URL:
 
-## What technologies are used for this project?
+```
+VITE_WEBHOOK_URL=https://your-webhook-endpoint.com/api/lead
+```
 
-This project is built with:
+If no webhook URL is set, the app will:
+- Still collect optional lead information
+- Store all data in localStorage only
+- Display the full report
+- Allow PDF download
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Webhook Payload Format
 
-## How can I deploy this project?
+When a webhook URL is configured, the following JSON payload is sent:
 
-Simply open [Lovable](https://lovable.dev/projects/85af8b35-93d7-4842-98cf-f46d4eaf7bf0) and click on Share -> Publish.
+```json
+{
+  "lead": {
+    "name": "string",
+    "email": "string",
+    "company": "string"
+  },
+  "analysis": {
+    "overallScore": 75,
+    "categoryScores": [
+      {
+        "categoryId": "retention",
+        "categoryName": "Retention rhythm",
+        "score": 80,
+        "rawTotal": 12,
+        "maxPossible": 15
+      }
+    ],
+    "lowestCategories": ["Community and channels", "Post launch optimization habits"],
+    "timestamp": "2025-01-15T10:30:00.000Z"
+  }
+}
+```
 
-## Can I connect a custom domain to my Lovable project?
+## Embedding in WordPress
 
-Yes, you can!
+1. Copy the embed code from the "How to embed" section on the home page
+2. In WordPress, add an HTML block to your page
+3. Paste the embed code:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```html
+<iframe src="YOUR_SITE_URL/embed" width="100%" height="900" style="border:0;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Testing
+
+### Manual Test with Fake Answers
+
+To quickly preview the report, open the browser console on the home page and run:
+
+```javascript
+// Fill all answers with value 2 (repeatable)
+const categories = ["retention", "monetization", "reengagement", "community", "optimization"];
+categories.forEach(cat => {
+  for (let i = 1; i <= 5; i++) {
+    const questionId = `${cat}_${i}`;
+    document.querySelector(`input[value="2"][id*="${questionId}"]`)?.click();
+  }
+});
+
+// Click submit
+document.querySelector('button:has-text("Submit for Analysis")').click();
+```
+
+## Project Structure
+
+```
+src/
+├── components/        # React components
+├── config/            # App configuration
+├── data/              # Questions and recommendations
+├── lib/               # Utilities (scoring, PDF, storage, webhook)
+├── pages/             # Route pages (Index, Embed)
+├── types/             # TypeScript definitions
+└── index.css          # Design system and styles
+```
+
+## Scoring Model
+
+- 5 categories with 5 questions each
+- Each question scored 0 to 3
+- Category score: (sum of answers / 15) × 100
+- Overall score: average of 5 category scores
+- Recommendations provided for 2 lowest scoring categories
+
+## Browser Support
+
+- Modern browsers (Chrome, Firefox, Safari, Edge)
+- Mobile responsive design
+- Requires JavaScript enabled
+
+## License
+
+Proprietary. Built for The Aesop Agency.

@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { Header } from "@/components/Header";
 import { CategorySection } from "@/components/CategorySection";
 import { LeadCaptureForm } from "@/components/LeadCaptureForm";
 import { ReportCard } from "@/components/ReportCard";
-import { EmbedInstructions } from "@/components/EmbedInstructions";
 import { categories } from "@/data/categories";
 import { Answer, AnswerValue, LeadData } from "@/types/analyzer";
 import { calculateScores } from "@/lib/scoring";
@@ -15,7 +13,7 @@ import { APP_CONFIG } from "@/config/appConfig";
 
 type ViewState = "form" | "lead" | "report";
 
-const Index = () => {
+const Embed = () => {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [viewState, setViewState] = useState<ViewState>("form");
   const [analysisResult, setAnalysisResult] = useState<any>(null);
@@ -74,21 +72,18 @@ const Index = () => {
     setAnswers([]);
     setAnalysisResult(null);
     setViewState("form");
-    window.scrollTo(0, 0);
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
-      
-      <main className="flex-1 py-12 px-4">
+    <div className="min-h-screen bg-background py-8 px-4">
+      <main>
         {viewState === "form" && (
           <div className="max-w-4xl mx-auto space-y-12">
             <div className="text-center space-y-4">
-              <h1 className="text-4xl font-bold text-foreground">
+              <h1 className="text-3xl font-bold text-foreground">
                 Evergreen Readiness Analyzer
               </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-base text-muted-foreground max-w-2xl mx-auto">
                 Score the health of your revenue system. Answer 25 questions across 5 categories to identify your strongest opportunities.
               </p>
             </div>
@@ -112,8 +107,6 @@ const Index = () => {
                 Submit for Analysis
               </Button>
             </div>
-
-            <EmbedInstructions />
           </div>
         )}
 
@@ -125,21 +118,8 @@ const Index = () => {
           <ReportCard result={analysisResult} onStartNew={handleStartNew} />
         )}
       </main>
-
-      <footer className="py-6 px-4 border-t border-border bg-background">
-        <div className="max-w-4xl mx-auto text-center text-sm text-muted-foreground">
-          <a
-            href={APP_CONFIG.scheduleUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-primary transition-colors"
-          >
-            Schedule here
-          </a>
-        </div>
-      </footer>
     </div>
   );
 };
 
-export default Index;
+export default Embed;
