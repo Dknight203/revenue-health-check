@@ -10,7 +10,7 @@ interface LeadCaptureFormProps {
 }
 
 export function LeadCaptureForm({ onSubmit, onSkip }: LeadCaptureFormProps) {
-  const [lead, setLead] = useState<LeadData>({});
+  const [lead, setLead] = useState<LeadData>({ email: "" });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
