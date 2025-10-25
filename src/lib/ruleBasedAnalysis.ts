@@ -47,36 +47,36 @@ function detectOpportunities(metadata: GameMetadata, archetype: GameArchetype): 
 function detectPremiumSinglePlayerOpportunities(metadata: GameMetadata): Opportunity[] {
   const opportunities: Opportunity[] = [];
 
-  // Check for pricing optimization
-  if (typeof metadata.price === "number" && metadata.price < 10) {
+  // Only suggest pricing changes for upcoming/early access games
+  if (typeof metadata.price === "number" && metadata.price < 10 && 
+      (metadata.releaseState === "upcoming" || metadata.releaseState === "early_access")) {
     opportunities.push({
       category: "Pricing Strategy",
       diagnosis: "Price point may be undervaluing your game compared to market expectations",
       actions: [
         "Research comparable titles in your genre to establish market-rate pricing",
-        "Test a launch discount strategy (15-20% off) to build early momentum while targeting higher base price"
+        "Consider a $14.99-$19.99 base price with a 15% launch discount to build early momentum"
       ],
       relevance: "high"
     });
   }
 
-  // Check for review optimization
-  if (metadata.reviewScore && metadata.reviewScore < 75) {
+  // Review optimization - only for launched games with review data
+  if (metadata.releaseState === "live" && metadata.reviewScore && metadata.reviewScore < 75) {
     opportunities.push({
       category: "User Experience",
       diagnosis: "Review score indicates friction in core experience or expectations mismatch",
       actions: [
-        "Analyze negative reviews to identify top 3 recurring complaints",
-        "Add optional tutorial or difficulty settings to reduce early-game frustration"
+        "Analyze the top 50 negative reviews to identify the most common criticisms",
+        "Prioritize fixing the top 2-3 recurring complaints before investing in marketing"
       ],
       relevance: "critical"
     });
   }
 
-  // Context-aware recommendation based on actual release state
+  // Context-aware launch/post-launch recommendations
   if (metadata.platform === "steam" || metadata.platform === "indie") {
     if (metadata.releaseState === "upcoming" || metadata.releaseState === "early_access") {
-      // Pre-launch or early access games
       opportunities.push({
         category: "Launch Optimization",
         diagnosis: "Early visibility and conversion patterns set long term trajectory.",
@@ -87,9 +87,7 @@ function detectPremiumSinglePlayerOpportunities(metadata: GameMetadata): Opportu
         relevance: "high"
       });
     } else if (metadata.releaseState === "live") {
-      // For launched games, provide specific recommendations based on actual metrics
-      
-      // Priority 1: If reviews are poor, fix the product first
+      // Only show quality issues if reviews are poor
       if (metadata.reviewScore && metadata.reviewScore < 70) {
         opportunities.push({
           category: "Product Quality",
@@ -101,8 +99,7 @@ function detectPremiumSinglePlayerOpportunities(metadata: GameMetadata): Opportu
           relevance: "critical"
         });
       }
-      
-      // Priority 2: Visibility/Marketing (always relevant for premium games)
+      // Otherwise, focus on visibility
       else {
         opportunities.push({
           category: "Post-Launch Visibility",
@@ -123,35 +120,41 @@ function detectPremiumSinglePlayerOpportunities(metadata: GameMetadata): Opportu
 function detectF2PMobileOpportunities(metadata: GameMetadata): Opportunity[] {
   const opportunities: Opportunity[] = [];
 
-  // IAP structure opportunities
+  // Only suggest mobile-specific advice if actually on mobile platforms
+  if (metadata.platform !== "mobile") {
+    // If classified as F2P mobile but not on mobile stores, provide web-specific advice
+    opportunities.push({
+      category: "Platform Strategy",
+      diagnosis: "F2P games benefit from mobile app store distribution and discoverability",
+      actions: [
+        "Consider developing iOS/Android versions to access mobile app store audiences",
+        "If staying web-based, focus on browser-based distribution (Kongregate, Newgrounds, etc.)"
+      ],
+      relevance: "high"
+    });
+    return opportunities;
+  }
+
+  // For actual mobile games, provide conditional advice
+  
+  // Always relevant: Monetization structure
   opportunities.push({
-    category: "Monetization Structure",
-    diagnosis: "F2P mobile games need clear IAP value hierarchy to maximize conversion",
+    category: "Monetization Clarity",
+    diagnosis: "Mobile players need clear value signals to convert from free to paying",
     actions: [
-      "Add a 'Best Value' visual badge to your mid-tier IAP pack to anchor player perception",
-      "Test a $0.99 starter pack within first 3 minutes of gameplay to convert early engagement"
+      "Add visual hierarchy to IAP offerings with a 'Best Value' badge on mid-tier packs",
+      "Test a low-friction starter pack ($0.99-$1.99) within first 5 minutes of gameplay"
     ],
-    relevance: "critical"
+    relevance: "high"
   });
 
-  // Retention mechanics
+  // Always relevant: Retention
   opportunities.push({
     category: "Retention Systems",
-    diagnosis: "Mobile games live or die on daily active user retention and habit formation",
+    diagnosis: "Daily active user retention drives mobile game success and monetization potential",
     actions: [
       "Implement a 7-day login calendar with escalating rewards to build daily habit",
-      "Add a comeback reward triggered 24 hours after last session to recover lapsed players"
-    ],
-    relevance: "critical"
-  });
-
-  // Subscription opportunity
-  opportunities.push({
-    category: "Recurring Revenue",
-    diagnosis: "Subscription models increase lifetime value 3-5x for engaged mobile players",
-    actions: [
-      "Design a VIP subscription ($4.99-$9.99/month) with exclusive cosmetics and convenience bonuses",
-      "Offer first-time subscribers a 3-day free trial to reduce friction"
+      "Add a comeback reward triggered 24-48 hours after last session to recover lapsed players"
     ],
     relevance: "high"
   });
@@ -162,36 +165,41 @@ function detectF2PMobileOpportunities(metadata: GameMetadata): Opportunity[] {
 function detectLiveServiceOpportunities(metadata: GameMetadata): Opportunity[] {
   const opportunities: Opportunity[] = [];
 
-  // Content cadence
+  // Check if multiplayer (most live service games are)
+  if (!metadata.isMultiplayer) {
+    opportunities.push({
+      category: "Live Service Model Fit",
+      diagnosis: "Single-player games struggle to sustain live service engagement patterns",
+      actions: [
+        "Consider episodic or seasonal content drops rather than ongoing live operations",
+        "Evaluate if a traditional premium DLC model might better fit your game's structure"
+      ],
+      relevance: "high"
+    });
+    return opportunities;
+  }
+
+  // For multiplayer live service games
+  
+  // Community is critical for live service
   opportunities.push({
-    category: "Content Rhythm",
-    diagnosis: "Live service games require consistent content updates to maintain player engagement",
+    category: "Community Infrastructure",
+    diagnosis: "Live service success depends on active community engagement and communication",
     actions: [
-      "Publish a 6-week content roadmap visible in-game and on social channels",
-      "Establish a weekly mini-event and bi-weekly major update schedule to create reliable touchpoints"
+      "Establish a central community hub (Discord, forums, or Reddit) if not already active",
+      "Post weekly game updates or community highlights to maintain engagement between content drops"
     ],
     relevance: "critical"
   });
 
-  // Community hub
-  opportunities.push({
-    category: "Community Management",
-    diagnosis: "Active communities drive word-of-mouth growth and improve retention by 25-40%",
-    actions: [
-      "Create a Discord server with auto-roles for verified players and clear channel structure",
-      "Post one gameplay clip or community highlight per week to feed social channels"
-    ],
-    relevance: "high"
-  });
-
-  // Monetization for live service
-  if (metadata.price === "free") {
+  // Content cadence (but more nuanced)
+  if (metadata.releaseState === "live") {
     opportunities.push({
-      category: "Battle Pass Design",
-      diagnosis: "Free live-service games need battle pass or season systems for recurring revenue",
+      category: "Content Rhythm",
+      diagnosis: "Players disengage from live service games without visible upcoming content",
       actions: [
-        "Design a 60-day battle pass with 50 tiers priced at $9.99 with cosmetic rewards",
-        "Offer a free track with 20% of rewards to showcase value to non-payers"
+        "Share a high-level content roadmap (next 4-8 weeks) to set player expectations",
+        "Establish a predictable event cadence (weekly/bi-weekly) so players know when to return"
       ],
       relevance: "high"
     });
@@ -203,50 +211,62 @@ function detectLiveServiceOpportunities(metadata: GameMetadata): Opportunity[] {
 function detectEarlyStageOpportunities(metadata: GameMetadata): Opportunity[] {
   const opportunities: Opportunity[] = [];
 
-  // Pre-launch audience building
+  // Audience building is always critical pre-launch
   opportunities.push({
     category: "Audience Building",
-    diagnosis: "Pre-launch games must build an email list and community before launch day",
+    diagnosis: "Pre-launch visibility directly correlates with launch-week sales performance",
     actions: [
-      "Add email capture to your game's website with a launch-day notification promise",
-      "Create a Discord server now and seed it with alpha/beta testers for day-one momentum"
+      "Add email capture to your game's landing page with launch-day notification promise",
+      "Build a community space (Discord, Reddit, or forums) and seed it with early playtesters"
     ],
     relevance: "critical"
   });
 
-  // Demo / beta access
-  if (metadata.releaseState === "early_access") {
-    opportunities.push({
-      category: "Early Access Strategy",
-      diagnosis: "Early Access games need clear roadmap communication to set expectations",
-      actions: [
-        "Publish a public roadmap showing planned features and estimated timelines",
-        "Establish a bi-weekly devlog cadence to build transparency and trust"
-      ],
-      relevance: "critical"
-    });
-  } else {
+  // Demo strategy - platform-specific
+  if (metadata.platform === "steam") {
     opportunities.push({
       category: "Pre-Launch Demo",
-      diagnosis: "Pre-launch demos increase wishlist conversion and provide valuable feedback",
+      diagnosis: "Steam demos increase wishlist conversion rates by 20-40% on average",
       actions: [
-        "Submit a polished 30-60 minute demo to Steam Next Fest or equivalent event",
-        "Add clear 'Wishlist Now' CTAs at demo completion to capture engaged players"
+        "Create a 30-60 minute demo showcasing your game's core loop and unique features",
+        "Submit to Steam Next Fest or feature it on your store page with clear wishlist CTAs"
+      ],
+      relevance: "high"
+    });
+  } else if (metadata.platform === "mobile") {
+    opportunities.push({
+      category: "Soft Launch Testing",
+      diagnosis: "Mobile games benefit from regional soft launches to test retention and monetization",
+      actions: [
+        "Soft launch in 1-2 smaller markets to gather retention and monetization data",
+        "Use pre-registration campaigns on App Store/Google Play to build launch momentum"
+      ],
+      relevance: "high"
+    });
+  } else if (metadata.platform === "indie" || metadata.platform === "web") {
+    opportunities.push({
+      category: "Beta Access Strategy",
+      diagnosis: "Indie games build community through early access to development process",
+      actions: [
+        "Offer playable beta access to email subscribers to gather feedback and build advocates",
+        "Consider itch.io for early builds to reach indie game enthusiast audience"
       ],
       relevance: "high"
     });
   }
 
-  // Launch timing
-  opportunities.push({
-    category: "Launch Timing",
-    diagnosis: "Launch windows heavily impact first-week visibility and sales momentum",
-    actions: [
-      "Avoid major AAA releases and holidays - target January, March, or September windows",
-      "Prepare 10+ game keys for creator outreach starting 2 weeks before launch"
-    ],
-    relevance: "medium"
-  });
+  // Early Access specific
+  if (metadata.releaseState === "early_access") {
+    opportunities.push({
+      category: "Early Access Communication",
+      diagnosis: "Early Access success requires clear roadmap communication and regular updates",
+      actions: [
+        "Publish a public roadmap showing planned features and realistic timelines",
+        "Establish a bi-weekly devlog cadence to build transparency and trust with your community"
+      ],
+      relevance: "critical"
+    });
+  }
 
   return opportunities;
 }
@@ -254,27 +274,52 @@ function detectEarlyStageOpportunities(metadata: GameMetadata): Opportunity[] {
 function detectAAPremiumOpportunities(metadata: GameMetadata): Opportunity[] {
   const opportunities: Opportunity[] = [];
 
-  // DLC / Season pass
-  opportunities.push({
-    category: "Post-Launch Revenue",
-    diagnosis: "Premium AA/AAA titles benefit from planned DLC and season pass strategies",
-    actions: [
-      "Design a Year 1 content roadmap with 2-3 major DLC drops priced at $15-$25 each",
-      "Offer a season pass pre-order at 15-20% discount to secure early commitment"
-    ],
-    relevance: "high"
-  });
-
-  // Community for AAA
-  opportunities.push({
-    category: "Community Engagement",
-    diagnosis: "AAA games require active community management for sustained player base",
-    actions: [
-      "Establish official forums or Discord with dedicated community managers",
-      "Run monthly community events or challenges with in-game rewards"
-    ],
-    relevance: "medium"
-  });
+  // Only suggest DLC for multiplayer or live service AAA games
+  if (metadata.isMultiplayer) {
+    opportunities.push({
+      category: "Post-Launch Revenue",
+      diagnosis: "Multiplayer AAA titles sustain revenue through seasonal content and cosmetics",
+      actions: [
+        "Design a Year 1 content plan with 2-3 major content drops (maps, modes, or story)",
+        "Consider battle pass or season pass model to create recurring revenue from engaged players"
+      ],
+      relevance: "high"
+    });
+    
+    opportunities.push({
+      category: "Community Management",
+      diagnosis: "Multiplayer games require active community management for sustained player base",
+      actions: [
+        "Establish official community channels with dedicated moderation and support",
+        "Run monthly in-game events or challenges to maintain engagement between content drops"
+      ],
+      relevance: "high"
+    });
+  } else {
+    // Single-player AAA games
+    opportunities.push({
+      category: "Post-Launch Visibility",
+      diagnosis: "Premium single-player games benefit from sustained marketing beyond launch window",
+      actions: [
+        "Identify high-reach content creators for post-launch coverage and let's-play series",
+        "Plan discount participation in major platform sales (Steam, console seasonal sales)"
+      ],
+      relevance: "high"
+    });
+    
+    // Only suggest DLC if genre supports it (not story-focused games)
+    if (!metadata.genre.some(g => ['narrative', 'visual novel', 'adventure'].includes(g.toLowerCase()))) {
+      opportunities.push({
+        category: "Content Extensions",
+        diagnosis: "Premium games can extend lifetime value through meaningful content additions",
+        actions: [
+          "Consider post-launch content DLC if it fits your game's structure (new levels, modes, etc.)",
+          "Focus on high-quality expansions that justify premium pricing rather than cosmetics"
+        ],
+        relevance: "medium"
+      });
+    }
+  }
 
   return opportunities;
 }

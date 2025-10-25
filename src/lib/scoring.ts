@@ -1,6 +1,5 @@
 import { Answer, CategoryScore, AnalysisResult } from "@/types/analyzer";
 import { categories } from "@/data/categories";
-import { recommendations } from "@/data/recommendations";
 
 export function calculateScores(answers: Answer[]): AnalysisResult {
   const categoryScores: CategoryScore[] = categories.map(category => {
@@ -36,7 +35,7 @@ export function calculateScores(answers: Answer[]): AnalysisResult {
 }
 
 export function getRecommendation(categoryId: string) {
-  return recommendations[categoryId] || {
+  return {
     diagnosis: "This area needs attention.",
     actions: ["Review current practices", "Establish regular review cadence"]
   };
