@@ -73,16 +73,32 @@ function detectPremiumSinglePlayerOpportunities(metadata: GameMetadata): Opportu
     });
   }
 
-  // Generic opportunity for premium games
-  opportunities.push({
-    category: "Launch Optimization",
-    diagnosis: "Premium single-player games benefit from strong launch momentum and word-of-mouth",
-    actions: [
-      "Add a free demo to improve wishlist-to-purchase conversion by 20-30%",
-      "Prepare 3-5 key creator outreach messages with game keys for launch week"
-    ],
-    relevance: "high"
-  });
+  // Context-aware recommendation based on actual release state
+  if (metadata.platform === "steam" || metadata.platform === "indie") {
+    if (metadata.releaseState === "upcoming" || metadata.releaseState === "early_access") {
+      // Pre-launch or early access games
+      opportunities.push({
+        category: "Launch Optimization",
+        diagnosis: "Early visibility and conversion patterns set long term trajectory.",
+        actions: [
+          "Add a demo or wishlist landing seven days before launch to start building momentum",
+          "Secure three creator partnerships and prepare launch day coverage to maximize day one reach"
+        ],
+        relevance: "high"
+      });
+    } else if (metadata.releaseState === "live") {
+      // Already launched games
+      opportunities.push({
+        category: "Post-Launch Momentum",
+        diagnosis: "Sustaining visibility and engagement after launch requires ongoing community activation.",
+        actions: [
+          "Establish a content update roadmap and communicate it clearly to maintain player interest",
+          "Reactivate creator partnerships with feature showcases and community highlights to sustain reach"
+        ],
+        relevance: "high"
+      });
+    }
+  }
 
   return opportunities;
 }

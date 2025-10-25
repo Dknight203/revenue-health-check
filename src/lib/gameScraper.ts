@@ -81,17 +81,20 @@ function extractMetadata(html: string, url: string): ScrapedData {
     data.reviewScore = extractSteamReviews(html);
     data.isMultiplayer = html.toLowerCase().includes("multiplayer") || html.toLowerCase().includes("multi-player");
     data.releaseState = extractSteamReleaseState(html);
+    data.lastUpdate = extractSteamReleaseDate(html);
   } else if (url.includes("apps.apple.com") || url.includes("play.google.com")) {
     data.platform = "mobile";
     data.price = extractMobilePrice(html);
     data.genre = extractMobileGenre(html);
     data.isMultiplayer = html.toLowerCase().includes("multiplayer");
     data.releaseState = "live";
+    data.lastUpdate = extractMobileReleaseDate(html, url);
   } else if (url.includes("itch.io")) {
     data.platform = "indie";
     data.price = extractItchPrice(html);
     data.isMultiplayer = html.toLowerCase().includes("multiplayer");
     data.releaseState = "live";
+    data.lastUpdate = extractItchReleaseDate(html);
   } else {
     data.platform = "web";
     data.price = "free";
@@ -157,6 +160,59 @@ function extractItchPrice(html: string): string {
 
   const priceMatch = html.match(/\$(\d+\.?\d*)/);
   return priceMatch ? priceMatch[1] : "free";
+}
+
+function extractSteamReleaseDate(html: string): string | undefined {
+  // Steam shows release date in multiple formats and locations
+  
+  // Format 1: "Release Date: Aug 28, 2024"
+  const releaseDateMatch = html.match(/Release Date[:\s]*([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+  if (releaseDateMatch) return releaseDateMatch[1];
+  
+  // Format 2: In the game_area_purchase_date div
+  const purchaseDateMatch = html.match(/<div class="release_date">.*?<div class="date">([^<]+)<\/div>/is);
+  if (purchaseDateMatch) return purchaseDateMatch[1].trim();
+  
+  // Format 3: Meta tag datePublished
+  const metaDateMatch = html.match(/<meta itemprop="datePublished" content="([^"]+)"/i);
+  if (metaDateMatch) return metaDateMatch[1];
+  
+  // Format 4: JSON-LD structured data
+  const jsonLdMatch = html.match(/"datePublished":\s*"([^"]+)"/);
+  if (jsonLdMatch) return jsonLdMatch[1];
+  
+  return undefined;
+}
+
+function extractMobileReleaseDate(html: string, url: string): string | undefined {
+  if (url.includes('apps.apple.com')) {
+    // iOS: "Released Mar 15, 2024" or similar
+    const iosMatch = html.match(/Released[:\s]+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i) ||
+                     html.match(/"datePublished":\s*"([^"]+)"/i) ||
+                     html.match(/Release Date[:\s]*([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+    if (iosMatch) return iosMatch[1];
+  }
+  
+  if (url.includes('play.google.com')) {
+    // Android: "Released on Mar 15, 2024"
+    const androidMatch = html.match(/Released on\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i) ||
+                         html.match(/"datePublished":\s*"([^"]+)"/i);
+    if (androidMatch) return androidMatch[1];
+  }
+  
+  return undefined;
+}
+
+function extractItchReleaseDate(html: string): string | undefined {
+  // itch.io: "Published Mar 15, 2024" or relative time
+  const publishedMatch = html.match(/Published[:\s]+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+  if (publishedMatch) return publishedMatch[1];
+  
+  // Sometimes in an abbr tag with full date
+  const abbrMatch = html.match(/<abbr[^>]*title="([^"]+)"[^>]*>\d+\s+(?:days?|months?|years?)\s+ago<\/abbr>/i);
+  if (abbrMatch) return abbrMatch[1];
+  
+  return undefined;
 }
 
 function buildGameMetadata(data: ScrapedData, url: string): GameMetadata {

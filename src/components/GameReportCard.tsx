@@ -48,6 +48,11 @@ export function GameReportCard({ result, onStartNew }: GameReportCardProps) {
         <p className="text-muted-foreground">
           {getArchetypeLabel(gameContext.archetype)}
         </p>
+        {gameContext.lastUpdateDate && (
+          <p className="text-sm text-muted-foreground">
+            Released: {gameContext.lastUpdateDate}
+          </p>
+        )}
       </div>
 
       {/* Overall Score */}
