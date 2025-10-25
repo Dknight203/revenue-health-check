@@ -87,16 +87,33 @@ function detectPremiumSinglePlayerOpportunities(metadata: GameMetadata): Opportu
         relevance: "high"
       });
     } else if (metadata.releaseState === "live") {
-      // Already launched games
-      opportunities.push({
-        category: "Post-Launch Momentum",
-        diagnosis: "Sustaining visibility and engagement after launch requires ongoing community activation.",
-        actions: [
-          "Establish a content update roadmap and communicate it clearly to maintain player interest",
-          "Reactivate creator partnerships with feature showcases and community highlights to sustain reach"
-        ],
-        relevance: "high"
-      });
+      // For launched games, provide specific recommendations based on actual metrics
+      
+      // Priority 1: If reviews are poor, fix the product first
+      if (metadata.reviewScore && metadata.reviewScore < 70) {
+        opportunities.push({
+          category: "Product Quality",
+          diagnosis: "Below-average reviews are limiting word-of-mouth growth and conversion rates.",
+          actions: [
+            "Analyze the top 50 negative reviews to identify the most common criticisms",
+            "Address the top 2-3 recurring issues in a focused patch before marketing spend"
+          ],
+          relevance: "critical"
+        });
+      }
+      
+      // Priority 2: Visibility/Marketing (always relevant for premium games)
+      else {
+        opportunities.push({
+          category: "Post-Launch Visibility",
+          diagnosis: "Sustained visibility requires ongoing marketing touchpoints beyond launch week.",
+          actions: [
+            "Identify 3-5 content creators whose audience matches your game and offer review keys",
+            "Plan seasonal discount participation (Steam sales, holiday events) to capture new audience waves"
+          ],
+          relevance: "high"
+        });
+      }
     }
   }
 
