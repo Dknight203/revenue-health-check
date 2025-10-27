@@ -1,5 +1,5 @@
 import { GameMetadata } from "@/types/analyzer";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, DynamicRetrievalMode } from "@google/generative-ai";
 
 export async function searchGameData(
   gameTitle: string,
@@ -78,7 +78,14 @@ async function performWebSearch(query: string, numResults: number = 5): Promise<
     const genAI = new GoogleGenerativeAI("AIzaSyDIiYmV7KipsHjXu7au3jxVTaJLZ0GWm2A");
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.0-flash-exp",
-      tools: [{ googleSearchRetrieval: {} }]
+      tools: [{ 
+        googleSearchRetrieval: { 
+          dynamicRetrievalConfig: { 
+            mode: DynamicRetrievalMode.MODE_DYNAMIC,
+            dynamicThreshold: 0.3
+          } 
+        } 
+      }]
     });
 
     const prompt = `Search Google and extract the following information: ${query}
@@ -97,11 +104,11 @@ async function performWebSearch(query: string, numResults: number = 5): Promise<
     const response = await result.response;
     const text = response.text();
     
-    console.log(`[WebSearch] Gemini found data (${text.length} chars)`);
+    console.log(`[WebSearch] Gemini found data (${text.length} chars):`, text.substring(0, 500));
     return text;
   } catch (error) {
     console.error('[WebSearch] Gemini search error:', error);
-    return "";
+    throw error;
   }
 }
 
