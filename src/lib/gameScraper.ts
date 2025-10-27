@@ -45,21 +45,18 @@ export async function scrapeGameUrl(url: string): Promise<GameMetadata> {
     // Step 3: Merge HTML scraping with web search (web search takes priority)
     const mergedMetadata: GameMetadata = {
       ...htmlMetadata,
+      // Web search price overrides HTML scraping (fixes "Free" for paid games)
       price: searchData.price !== undefined ? searchData.price : htmlMetadata.price,
       developer: searchData.developer || htmlMetadata.developer,
       publisher: searchData.publisher || htmlMetadata.publisher,
-      platforms: searchData.platforms && searchData.platforms.length > 0 
-        ? searchData.platforms 
-        : htmlMetadata.platforms || [htmlMetadata.platform],
+      // Web search platforms override HTML platform (fixes "steam" only)
+      platforms: (searchData.platforms && searchData.platforms.length > 0)
+        ? searchData.platforms
+        : (htmlMetadata.platform ? [htmlMetadata.platform] : []),
       reviewCount: searchData.reviewCount || htmlMetadata.reviewCount,
       reviewScore: searchData.reviewScore !== undefined ? searchData.reviewScore : htmlMetadata.reviewScore,
-      currentPlayers: searchData.currentPlayers || htmlMetadata.currentPlayers,
       peakPlayers: searchData.peakPlayers || htmlMetadata.peakPlayers,
-      estimatedOwners: searchData.estimatedOwners || htmlMetadata.estimatedOwners,
-      estimatedRevenue: searchData.estimatedRevenue || htmlMetadata.estimatedRevenue,
       copiesSold: searchData.copiesSold || htmlMetadata.copiesSold,
-      salesMilestone: searchData.salesMilestone || htmlMetadata.salesMilestone,
-      earningsRank: searchData.earningsRank || htmlMetadata.earningsRank,
     };
 
     console.log("Merged metadata before validation:", mergedMetadata);

@@ -1,0 +1,5 @@
+[project]
+name = "game-revenue-analyzer"
+
+[functions.gemini]
+verify_jwt = false
