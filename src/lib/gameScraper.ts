@@ -111,26 +111,46 @@ function extractTitle(html: string): string {
 }
 
 function extractSteamPrice(html: string): string {
+  console.log("🔍 Attempting to extract Steam price...");
+  
   // Check for free to play
-  const freeMatch = html.match(/Free to Play|Free To Play/i);
-  if (freeMatch) return "free";
+  const freeMatch = html.match(/Free[\s\S]*?to[\s\S]*?Play/i);
+  if (freeMatch) {
+    console.log("✅ Found free to play");
+    return "free";
+  }
 
   // Look for data-price-final attribute (in cents)
   const dataPriceMatch = html.match(/data-price-final="(\d+)"/);
   if (dataPriceMatch) {
     const cents = parseInt(dataPriceMatch[1]);
+    console.log(`✅ Found price via data-price-final: $${(cents / 100).toFixed(2)}`);
     return (cents / 100).toFixed(2);
   }
 
-  // Look for game_purchase_price div
-  const purchasePriceMatch = html.match(/<div class="game_purchase_price price"[^>]*>\s*\$(\d+\.?\d*)/);
-  if (purchasePriceMatch) return purchasePriceMatch[1];
+  // Look for game_purchase_price div with flexible whitespace
+  const purchasePriceMatch = html.match(/<div[^>]*class="game_purchase_price[^"]*"[^>]*>[\s\S]*?\$(\d+\.?\d*)[\s\S]*?<\/div>/);
+  if (purchasePriceMatch) {
+    console.log(`✅ Found price via game_purchase_price: $${purchasePriceMatch[1]}`);
+    return purchasePriceMatch[1];
+  }
 
-  // Look for discount_final_price as fallback
-  const discountPriceMatch = html.match(/<div class="discount_final_price"[^>]*>\s*\$(\d+\.?\d*)/);
-  if (discountPriceMatch) return discountPriceMatch[1];
+  // Look for discount_final_price with flexible whitespace
+  const discountPriceMatch = html.match(/<div[^>]*class="discount_final_price"[^>]*>[\s\S]*?\$(\d+\.?\d*)[\s\S]*?<\/div>/);
+  if (discountPriceMatch) {
+    console.log(`✅ Found price via discount_final_price: $${discountPriceMatch[1]}`);
+    return discountPriceMatch[1];
+  }
 
-  console.warn("Could not extract Steam price from HTML");
+  // Last resort: any dollar amount in game area
+  const anyPriceMatch = html.match(/game_area_purchase[\s\S]{0,500}?\$(\d+\.?\d*)/);
+  if (anyPriceMatch) {
+    console.log(`⚠️ Found price via fallback pattern: $${anyPriceMatch[1]}`);
+    return anyPriceMatch[1];
+  }
+
+  console.error("❌ Could not extract Steam price from HTML");
+  console.log("HTML sample:", html.substring(0, 1000));
   return "unknown";
 }
 
@@ -179,23 +199,37 @@ function extractItchPrice(html: string): string {
 }
 
 function extractSteamReleaseDate(html: string): string | undefined {
-  // Format 1: <div class="date">Oct 15, 2025</div> inside release_date div
-  const releaseDateDivMatch = html.match(/<div class="release_date">.*?<div class="date">([^<]+)<\/div>/is);
-  if (releaseDateDivMatch) return releaseDateDivMatch[1].trim();
+  console.log("🔍 Attempting to extract Steam release date...");
   
-  // Format 2: "Release Date: Aug 28, 2024"
-  const releaseDateMatch = html.match(/Release Date[:\s]*<\/b>\s*([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
-  if (releaseDateMatch) return releaseDateMatch[1].trim();
+  // Format 1: <div class="date">Oct 15, 2025</div> inside release_date div
+  const releaseDateDivMatch = html.match(/<div[^>]*class="release_date"[^>]*>[\s\S]*?<div[^>]*class="date"[^>]*>([^<]+)<\/div>/i);
+  if (releaseDateDivMatch) {
+    console.log(`✅ Found release date via date div: ${releaseDateDivMatch[1].trim()}`);
+    return releaseDateDivMatch[1].trim();
+  }
+  
+  // Format 2: "Release Date: Aug 28, 2024" with flexible whitespace
+  const releaseDateMatch = html.match(/Release[\s\S]*?Date[\s\S]*?:?[\s\S]*?([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+  if (releaseDateMatch) {
+    console.log(`✅ Found release date via text pattern: ${releaseDateMatch[1].trim()}`);
+    return releaseDateMatch[1].trim();
+  }
   
   // Format 3: Meta tag datePublished
-  const metaDateMatch = html.match(/<meta itemprop="datePublished" content="([^"]+)"/i);
-  if (metaDateMatch) return metaDateMatch[1];
+  const metaDateMatch = html.match(/<meta[^>]*itemprop="datePublished"[^>]*content="([^"]+)"/i);
+  if (metaDateMatch) {
+    console.log(`✅ Found release date via meta tag: ${metaDateMatch[1]}`);
+    return metaDateMatch[1];
+  }
   
   // Format 4: JSON-LD structured data
-  const jsonLdMatch = html.match(/"datePublished":\s*"([^"]+)"/);
-  if (jsonLdMatch) return jsonLdMatch[1];
+  const jsonLdMatch = html.match(/"datePublished"[\s\S]*?:[\s\S]*?"([^"]+)"/);
+  if (jsonLdMatch) {
+    console.log(`✅ Found release date via JSON-LD: ${jsonLdMatch[1]}`);
+    return jsonLdMatch[1];
+  }
   
-  console.warn("Could not extract Steam release date from HTML");
+  console.error("❌ Could not extract Steam release date from HTML");
   return undefined;
 }
 

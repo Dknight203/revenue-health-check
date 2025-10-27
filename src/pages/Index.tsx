@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { APP_CONFIG } from "@/config/appConfig";
 import { getWebhookQueue, removeFromWebhookQueue, incrementQueueAttempts } from "@/lib/webhookQueue";
 import { classifyGame } from "@/lib/contextClassifier";
-import { testGameScraper } from "@/lib/testScraper";
 
 type ViewState = "input" | "loading" | "manual" | "email" | "report";
 
@@ -62,9 +61,6 @@ const Index = () => {
     setViewState("loading");
 
     try {
-      // Test the scraper first
-      await testGameScraper(url);
-      
       const metadata = await scrapeGameUrl(url);
       const result = analyzeGame(metadata, url);
       setAnalysisResult(result);
