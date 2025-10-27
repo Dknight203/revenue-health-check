@@ -48,12 +48,54 @@ export function GameReportCard({ result, onStartNew }: GameReportCardProps) {
         <p className="text-muted-foreground">
           {getArchetypeLabel(gameContext.archetype)}
         </p>
-        {gameContext.lastUpdateDate && (
-          <p className="text-sm text-muted-foreground">
-            Released: {gameContext.lastUpdateDate}
-          </p>
-        )}
       </div>
+
+      {/* Game Metadata */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Game Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-foreground">Platform:</span>
+              <span className="ml-2 text-muted-foreground">{gameContext.platform}</span>
+            </div>
+            <div>
+              <span className="font-medium text-foreground">Price:</span>
+              <span className="ml-2 text-muted-foreground">
+                {gameContext.price === "free" ? "Free" : `$${gameContext.price}`}
+              </span>
+            </div>
+            {gameContext.genre && gameContext.genre.length > 0 && (
+              <div>
+                <span className="font-medium text-foreground">Genre:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.genre.join(", ")}</span>
+              </div>
+            )}
+            <div>
+              <span className="font-medium text-foreground">Release State:</span>
+              <span className="ml-2 text-muted-foreground capitalize">{gameContext.releaseState.replace("_", " ")}</span>
+            </div>
+            {gameContext.lastUpdateDate && (
+              <div>
+                <span className="font-medium text-foreground">Released:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.lastUpdateDate}</span>
+              </div>
+            )}
+            <div>
+              <span className="font-medium text-foreground">Multiplayer:</span>
+              <span className="ml-2 text-muted-foreground">{gameContext.isMultiplayer ? "Yes" : "No"}</span>
+            </div>
+            {gameContext.reviewScore && (
+              <div>
+                <span className="font-medium text-foreground">Review Score:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.reviewScore}%</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Overall Score */}
       <Card>
