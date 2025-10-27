@@ -111,11 +111,27 @@ function extractTitle(html: string): string {
 }
 
 function extractSteamPrice(html: string): string {
+  // Check for free to play
   const freeMatch = html.match(/Free to Play|Free To Play/i);
   if (freeMatch) return "free";
 
-  const priceMatch = html.match(/\$(\d+\.?\d*)/);
-  return priceMatch ? priceMatch[1] : "unknown";
+  // Look for data-price-final attribute (in cents)
+  const dataPriceMatch = html.match(/data-price-final="(\d+)"/);
+  if (dataPriceMatch) {
+    const cents = parseInt(dataPriceMatch[1]);
+    return (cents / 100).toFixed(2);
+  }
+
+  // Look for game_purchase_price div
+  const purchasePriceMatch = html.match(/<div class="game_purchase_price price"[^>]*>\s*\$(\d+\.?\d*)/);
+  if (purchasePriceMatch) return purchasePriceMatch[1];
+
+  // Look for discount_final_price as fallback
+  const discountPriceMatch = html.match(/<div class="discount_final_price"[^>]*>\s*\$(\d+\.?\d*)/);
+  if (discountPriceMatch) return discountPriceMatch[1];
+
+  console.warn("Could not extract Steam price from HTML");
+  return "unknown";
 }
 
 function extractSteamGenre(html: string): string[] {
@@ -163,15 +179,13 @@ function extractItchPrice(html: string): string {
 }
 
 function extractSteamReleaseDate(html: string): string | undefined {
-  // Steam shows release date in multiple formats and locations
+  // Format 1: <div class="date">Oct 15, 2025</div> inside release_date div
+  const releaseDateDivMatch = html.match(/<div class="release_date">.*?<div class="date">([^<]+)<\/div>/is);
+  if (releaseDateDivMatch) return releaseDateDivMatch[1].trim();
   
-  // Format 1: "Release Date: Aug 28, 2024"
-  const releaseDateMatch = html.match(/Release Date[:\s]*([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
-  if (releaseDateMatch) return releaseDateMatch[1];
-  
-  // Format 2: In the game_area_purchase_date div
-  const purchaseDateMatch = html.match(/<div class="release_date">.*?<div class="date">([^<]+)<\/div>/is);
-  if (purchaseDateMatch) return purchaseDateMatch[1].trim();
+  // Format 2: "Release Date: Aug 28, 2024"
+  const releaseDateMatch = html.match(/Release Date[:\s]*<\/b>\s*([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+  if (releaseDateMatch) return releaseDateMatch[1].trim();
   
   // Format 3: Meta tag datePublished
   const metaDateMatch = html.match(/<meta itemprop="datePublished" content="([^"]+)"/i);
@@ -181,6 +195,7 @@ function extractSteamReleaseDate(html: string): string | undefined {
   const jsonLdMatch = html.match(/"datePublished":\s*"([^"]+)"/);
   if (jsonLdMatch) return jsonLdMatch[1];
   
+  console.warn("Could not extract Steam release date from HTML");
   return undefined;
 }
 
