@@ -71,10 +71,34 @@ export async function searchGameData(
 }
 
 async function performWebSearch(query: string, numResults: number = 5): Promise<string> {
-  // This is a placeholder - in production, this would call the websearch--web_search tool
-  // For now, we'll return empty string and rely on HTML scraping fallback
-  console.log(`[WebSearch] Query: ${query}`);
-  return "";
+  console.log(`[WebSearch] Searching: ${query}`);
+  
+  try {
+    const response = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${numResults}`, {
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      console.warn(`[WebSearch] Search failed: ${response.status}`);
+      return "";
+    }
+
+    const data = await response.json();
+    const results = data.web?.results || [];
+    
+    // Combine all result text content
+    const combinedText = results.map((r: any) => {
+      return `${r.title || ''}\n${r.description || ''}\n${r.extra_snippets?.join('\n') || ''}`;
+    }).join('\n\n');
+    
+    console.log(`[WebSearch] Found ${results.length} results`);
+    return combinedText;
+  } catch (error) {
+    console.error('[WebSearch] Error:', error);
+    return "";
+  }
 }
 
 function extractDeveloperPublisher(searchText: string, gameTitle: string): {
