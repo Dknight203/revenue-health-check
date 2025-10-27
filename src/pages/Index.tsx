@@ -7,7 +7,7 @@ import { GameReportCard } from "@/components/GameReportCard";
 import { ManualGameForm } from "@/components/ManualGameForm";
 import { AIAnalysisResult, LeadData, GameMetadata } from "@/types/analyzer";
 import { scrapeGameUrl } from "@/lib/gameScraper";
-import { analyzeGame } from "@/lib/ruleBasedAnalysis";
+import { analyzeGameWithGemini } from "@/lib/geminiAnalysis";
 import { sendToWebhook } from "@/lib/webhook";
 import { saveResultToLocal } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
@@ -62,7 +62,7 @@ const Index = () => {
 
     try {
       const metadata = await scrapeGameUrl(url);
-      const result = analyzeGame(metadata, url);
+      const result = await analyzeGameWithGemini(metadata, url);
       setAnalysisResult(result);
       await new Promise(resolve => setTimeout(resolve, 15000));
       setViewState("email");
@@ -78,7 +78,7 @@ const Index = () => {
     }
   };
 
-  const handleManualSubmit = (metadata: GameMetadata) => {
+  const handleManualSubmit = async (metadata: GameMetadata) => {
     setViewState("loading");
     
     try {
@@ -86,7 +86,7 @@ const Index = () => {
       const archetype = classifyGame(metadata);
       const classifiedMetadata = { ...metadata, archetype };
       
-      const result = analyzeGame(classifiedMetadata, gameUrl || "manual-entry");
+      const result = await analyzeGameWithGemini(classifiedMetadata, gameUrl || "manual-entry");
       setAnalysisResult(result);
       
       setTimeout(() => {
