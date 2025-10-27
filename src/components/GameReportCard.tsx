@@ -57,9 +57,25 @@ export function GameReportCard({ result, onStartNew }: GameReportCardProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            {gameContext.developer && (
+              <div>
+                <span className="font-medium text-foreground">Developer:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.developer}</span>
+              </div>
+            )}
+            {gameContext.publisher && (
+              <div>
+                <span className="font-medium text-foreground">Publisher:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.publisher}</span>
+              </div>
+            )}
             <div>
-              <span className="font-medium text-foreground">Platform:</span>
-              <span className="ml-2 text-muted-foreground">{gameContext.platform}</span>
+              <span className="font-medium text-foreground">Platforms:</span>
+              <span className="ml-2 text-muted-foreground">
+                {gameContext.platforms && gameContext.platforms.length > 0 
+                  ? gameContext.platforms.join(", ")
+                  : gameContext.platform}
+              </span>
             </div>
             <div>
               <span className="font-medium text-foreground">Price:</span>
@@ -91,6 +107,48 @@ export function GameReportCard({ result, onStartNew }: GameReportCardProps) {
               <div>
                 <span className="font-medium text-foreground">Review Score:</span>
                 <span className="ml-2 text-muted-foreground">{gameContext.reviewScore}%</span>
+              </div>
+            )}
+            {gameContext.reviewCount && (
+              <div>
+                <span className="font-medium text-foreground">Total Reviews:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.reviewCount.toLocaleString()}</span>
+              </div>
+            )}
+            {gameContext.copiesSold && (
+              <div>
+                <span className="font-medium text-foreground">Copies Sold:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.copiesSold.toLocaleString()}</span>
+              </div>
+            )}
+            {gameContext.salesMilestone && (
+              <div className="md:col-span-2">
+                <span className="font-medium text-foreground">Sales Milestone:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.salesMilestone}</span>
+              </div>
+            )}
+            {gameContext.estimatedOwners && (
+              <div>
+                <span className="font-medium text-foreground">Est. Owners:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.estimatedOwners}</span>
+              </div>
+            )}
+            {gameContext.estimatedRevenue && (
+              <div>
+                <span className="font-medium text-foreground">Est. Revenue:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.estimatedRevenue}</span>
+              </div>
+            )}
+            {gameContext.peakPlayers && (
+              <div>
+                <span className="font-medium text-foreground">Peak Players:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.peakPlayers.toLocaleString()}</span>
+              </div>
+            )}
+            {gameContext.currentPlayers && (
+              <div>
+                <span className="font-medium text-foreground">Current Players:</span>
+                <span className="ml-2 text-muted-foreground">{gameContext.currentPlayers.toLocaleString()}</span>
               </div>
             )}
           </div>

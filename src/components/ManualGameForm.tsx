@@ -28,6 +28,7 @@ export function ManualGameForm({ onSubmit, onCancel, initialUrl }: ManualGameFor
 
     const metadata: GameMetadata = {
       title: formData.title || "Untitled Game",
+      platforms: [formData.platform],
       platform: formData.platform,
       price: formData.priceType === "free" ? "free" : parseFloat(formData.priceAmount) || 0,
       genre: formData.genre ? [formData.genre] : [],

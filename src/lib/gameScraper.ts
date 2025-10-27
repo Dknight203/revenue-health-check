@@ -1,6 +1,7 @@
 import { GameMetadata } from "@/types/analyzer";
-import { retryWithBackoff } from "./retryUtils";
 import { validateGameMetadata } from "./metadataValidator";
+import { retryWithBackoff } from "./retryUtils";
+import { searchGameData } from "./webSearchService";
 
 interface ScrapedData {
   title?: string;
@@ -16,8 +17,11 @@ interface ScrapedData {
 }
 
 export async function scrapeGameUrl(url: string): Promise<GameMetadata> {
+  console.log("Starting game data collection for URL:", url);
+  
   try {
-    const metadata = await retryWithBackoff(
+    // Step 1: Fetch basic HTML to get game title and initial data
+    const htmlMetadata = await retryWithBackoff(
       () => fetchAndParseGamePage(url),
       {
         maxAttempts: 3,
@@ -29,8 +33,37 @@ export async function scrapeGameUrl(url: string): Promise<GameMetadata> {
       }
     );
 
-    // Validate scraped metadata
-    const validation = validateGameMetadata(metadata);
+    console.log("HTML metadata:", htmlMetadata);
+
+    // Step 2: Enrich with web search data
+    const gameTitle = htmlMetadata.title;
+    console.log(`Enriching data for: ${gameTitle}`);
+    
+    const searchData = await searchGameData(gameTitle, url);
+    console.log("Web search data:", searchData);
+
+    // Step 3: Merge HTML scraping with web search (web search takes priority)
+    const mergedMetadata: GameMetadata = {
+      ...htmlMetadata,
+      developer: searchData.developer || htmlMetadata.developer,
+      publisher: searchData.publisher || htmlMetadata.publisher,
+      platforms: searchData.platforms && searchData.platforms.length > 0 
+        ? searchData.platforms 
+        : htmlMetadata.platforms || [htmlMetadata.platform],
+      reviewCount: searchData.reviewCount || htmlMetadata.reviewCount,
+      currentPlayers: searchData.currentPlayers || htmlMetadata.currentPlayers,
+      peakPlayers: searchData.peakPlayers || htmlMetadata.peakPlayers,
+      estimatedOwners: searchData.estimatedOwners || htmlMetadata.estimatedOwners,
+      estimatedRevenue: searchData.estimatedRevenue || htmlMetadata.estimatedRevenue,
+      copiesSold: searchData.copiesSold || htmlMetadata.copiesSold,
+      salesMilestone: searchData.salesMilestone || htmlMetadata.salesMilestone,
+      earningsRank: searchData.earningsRank || htmlMetadata.earningsRank,
+    };
+
+    console.log("Merged metadata before validation:", mergedMetadata);
+
+    // Step 4: Validate the metadata
+    const validation = validateGameMetadata(mergedMetadata);
     if (!validation.isValid) {
       console.error("Metadata validation failed:", validation.errors);
       throw new Error(`Validation failed: ${validation.errors.join(", ")}`);
@@ -39,10 +72,12 @@ export async function scrapeGameUrl(url: string): Promise<GameMetadata> {
     if (validation.warnings.length > 0) {
       console.warn("Metadata warnings:", validation.warnings);
     }
-
-    return metadata;
+    
+    console.log("Final validated metadata:", mergedMetadata);
+    
+    return mergedMetadata;
   } catch (error) {
-    console.error("Scraping error:", error);
+    console.error("Error collecting game data:", error);
     throw new Error("Could not analyze game URL automatically");
   }
 }
@@ -274,6 +309,7 @@ function buildGameMetadata(data: ScrapedData, url: string): GameMetadata {
 
   return {
     title: data.title || "Unknown Game",
+    platforms: [platform],
     platform,
     price,
     genre: data.genre || [],

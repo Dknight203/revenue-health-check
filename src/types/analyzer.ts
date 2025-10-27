@@ -9,12 +9,23 @@ export type GameArchetype =
 
 export interface GameMetadata {
   title: string;
+  developer?: string;
+  publisher?: string;
+  platforms: string[];
   platform: 'steam' | 'mobile' | 'console' | 'web' | 'indie';
   price: number | "free";
   genre: string[];
   releaseState: 'upcoming' | 'early_access' | 'live';
   isMultiplayer: boolean;
   reviewScore?: number;
+  reviewCount?: number;
+  currentPlayers?: number;
+  peakPlayers?: number;
+  estimatedOwners?: string;
+  estimatedRevenue?: string;
+  copiesSold?: number;
+  salesMilestone?: string;
+  earningsRank?: number;
   lastUpdateDate?: string;
   imageUrl?: string;
   archetype: GameArchetype;
