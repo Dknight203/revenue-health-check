@@ -45,12 +45,14 @@ export async function scrapeGameUrl(url: string): Promise<GameMetadata> {
     // Step 3: Merge HTML scraping with web search (web search takes priority)
     const mergedMetadata: GameMetadata = {
       ...htmlMetadata,
+      price: searchData.price !== undefined ? searchData.price : htmlMetadata.price,
       developer: searchData.developer || htmlMetadata.developer,
       publisher: searchData.publisher || htmlMetadata.publisher,
       platforms: searchData.platforms && searchData.platforms.length > 0 
         ? searchData.platforms 
         : htmlMetadata.platforms || [htmlMetadata.platform],
       reviewCount: searchData.reviewCount || htmlMetadata.reviewCount,
+      reviewScore: searchData.reviewScore !== undefined ? searchData.reviewScore : htmlMetadata.reviewScore,
       currentPlayers: searchData.currentPlayers || htmlMetadata.currentPlayers,
       peakPlayers: searchData.peakPlayers || htmlMetadata.peakPlayers,
       estimatedOwners: searchData.estimatedOwners || htmlMetadata.estimatedOwners,

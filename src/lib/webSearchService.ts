@@ -7,63 +7,125 @@ export async function searchGameData(
 ): Promise<Partial<GameMetadata>> {
   console.log(`[WebSearch] Searching for game: ${gameTitle}`);
   
-  const metadata: Partial<GameMetadata> = {
-    platforms: [],
-  };
+  const metadata: Partial<GameMetadata> = {};
 
   try {
-    // Search 1: Basic info - developer, publisher, platforms
-    const basicInfoResults = await performWebSearch(
-      `"${gameTitle}" developer publisher platforms site:steampowered.com OR site:wikipedia.org OR site:ign.com`,
+    // Search 1: Developer & Publisher
+    const devPubSchema = {
+      developer: "string or null",
+      publisher: "string or null",
+      sources: [{ title: "string", url: "string" }]
+    };
+    
+    const siteScope = storeUrl.includes('steam') ? 'site:steampowered.com OR site:wikipedia.org' :
+      storeUrl.includes('playstation') ? 'site:playstation.com OR site:wikipedia.org' :
+      storeUrl.includes('xbox') ? 'site:xbox.com OR site:wikipedia.org' :
+      storeUrl.includes('nintendo') ? 'site:nintendo.com OR site:wikipedia.org' :
+      storeUrl.includes('epic') ? 'site:epicgames.com OR site:wikipedia.org' :
+      storeUrl.includes('gog') ? 'site:gog.com OR site:wikipedia.org' :
+      storeUrl.includes('itch') ? 'site:itch.io OR site:wikipedia.org' :
+      'site:wikipedia.org';
+    
+    const devPubResult = await performWebSearch(
+      `"${gameTitle}" developer publisher ${siteScope}`,
+      devPubSchema,
       3
     );
-    
-    // Parse developer and publisher
-    const devPubData = extractDeveloperPublisher(basicInfoResults, gameTitle);
-    metadata.developer = devPubData.developer;
-    metadata.publisher = devPubData.publisher;
-    
-    // Parse platforms
-    const platformData = extractPlatforms(basicInfoResults);
-    metadata.platforms = platformData;
+    metadata.developer = devPubResult.data.developer;
+    metadata.publisher = devPubResult.data.publisher;
 
-    // Search 2: Sales data from multiple sources
-    const salesResults = await performWebSearch(
-      `"${gameTitle}" sales "copies sold" OR "units sold" OR "million copies" OR site:steamspy.com OR site:gamalytic.com`,
-      5
+    // Search 2: Platforms
+    const platformsSchema = {
+      platforms: ["array of strings"],
+      sources: [{ title: "string", url: "string" }]
+    };
+    
+    const platformsResult = await performWebSearch(
+      `"${gameTitle}" platforms Windows Mac Linux PlayStation Xbox Nintendo Switch Steam Deck`,
+      platformsSchema,
+      3
     );
-    
-    const salesData = extractSalesData(salesResults, gameTitle);
-    metadata.copiesSold = salesData.copiesSold;
-    metadata.salesMilestone = salesData.salesMilestone;
-    metadata.estimatedOwners = salesData.estimatedOwners;
-    metadata.estimatedRevenue = salesData.estimatedRevenue;
+    metadata.platforms = platformsResult.data.platforms || [];
 
-    // Search 3: Player metrics from SteamDB
+    // Search 3: Price (NEW!)
+    const priceSchema = {
+      priceUSD: "number or null",
+      currency: "string or null",
+      sources: [{ title: "string", url: "string" }]
+    };
+
+    const priceQuery = `"${gameTitle}" price USD ${siteScope}`;
+    const priceResult = await performWebSearch(priceQuery, priceSchema, 2);
+    
+    if (priceResult.data.priceUSD !== null && priceResult.data.priceUSD !== undefined) {
+      metadata.price = priceResult.data.priceUSD;
+    } else if (priceResult.data.currency?.toLowerCase() === "free" || 
+               String(priceResult.data.priceUSD).toLowerCase() === "free") {
+      metadata.price = "free";
+    }
+
+    // Search 4: Sales data
+    const salesSchema = {
+      salesCopies: "number or null",
+      salesMilestone: "string or null",
+      estimatedOwners: "string or null",
+      estimatedRevenue: "string or null",
+      sources: [{ title: "string", url: "string" }]
+    };
+
+    const salesResult = await performWebSearch(
+      `"${gameTitle}" copies sold units sold revenue site:steamdb.info OR site:gamalytic.com OR site:steamspy.com`,
+      salesSchema,
+      3
+    );
+    metadata.copiesSold = salesResult.data.salesCopies;
+    metadata.salesMilestone = salesResult.data.salesMilestone;
+    metadata.estimatedOwners = salesResult.data.estimatedOwners;
+    metadata.estimatedRevenue = salesResult.data.estimatedRevenue;
+
+    // Search 5: Player metrics (Steam only)
     if (storeUrl.includes('steam')) {
-      const playerResults = await performWebSearch(
-        `"${gameTitle}" site:steamdb.info players peak`,
+      const playersSchema = {
+        currentPlayers: "number or null",
+        peakPlayers: "number or null",
+        sources: [{ title: "string", url: "string" }]
+      };
+
+      const playersResult = await performWebSearch(
+        `"${gameTitle}" site:steamdb.info players peak current`,
+        playersSchema,
         2
       );
-      
-      const playerData = extractPlayerMetrics(playerResults);
-      metadata.currentPlayers = playerData.currentPlayers;
-      metadata.peakPlayers = playerData.peakPlayers;
+      metadata.currentPlayers = playersResult.data.currentPlayers;
+      metadata.peakPlayers = playersResult.data.peakPlayers;
     }
 
-    // Search 4: Review data
-    const reviewResults = await performWebSearch(
-      `"${gameTitle}" reviews "user reviews" rating site:steampowered.com OR site:metacritic.com`,
+    // Search 6: Review data
+    const reviewsSchema = {
+      reviewCount: "number or null",
+      reviewScore: "number or null",
+      sources: [{ title: "string", url: "string" }]
+    };
+
+    const reviewsResult = await performWebSearch(
+      `"${gameTitle}" reviews rating score site:steampowered.com OR site:metacritic.com`,
+      reviewsSchema,
       3
     );
-    
-    const reviewData = extractReviewData(reviewResults);
-    metadata.reviewCount = reviewData.reviewCount;
-    if (!metadata.reviewScore) {
-      metadata.reviewScore = reviewData.reviewScore;
-    }
+    metadata.reviewCount = reviewsResult.data.reviewCount;
+    metadata.reviewScore = reviewsResult.data.reviewScore;
 
-    console.log(`[WebSearch] Enriched metadata:`, metadata);
+    console.log(`[WebSearch] Final enriched metadata:`, {
+      developer: metadata.developer,
+      publisher: metadata.publisher,
+      platforms: metadata.platforms,
+      price: metadata.price,
+      copiesSold: metadata.copiesSold,
+      reviewCount: metadata.reviewCount,
+      reviewScore: metadata.reviewScore,
+      peakPlayers: metadata.peakPlayers,
+    });
+
     return metadata;
   } catch (error) {
     console.error("[WebSearch] Error during web search:", error);
@@ -71,13 +133,17 @@ export async function searchGameData(
   }
 }
 
-async function performWebSearch(query: string, numResults: number = 5): Promise<string> {
+async function performWebSearch(
+  query: string, 
+  schema: any,
+  numResults: number = 5
+): Promise<{ data: any; grounded: boolean; sources: string[] }> {
   console.log(`[WebSearch] Gemini search: ${query}`);
   
   try {
     const genAI = new GoogleGenerativeAI("AIzaSyDIiYmV7KipsHjXu7au3jxVTaJLZ0GWm2A");
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-1.5-flash",
       tools: [{ 
         googleSearchRetrieval: { 
           dynamicRetrievalConfig: { 
@@ -85,215 +151,51 @@ async function performWebSearch(query: string, numResults: number = 5): Promise<
             dynamicThreshold: 0.3
           } 
         } 
-      }]
+      }],
+      generationConfig: {
+        temperature: 0.2,
+      }
     });
 
-    const prompt = `Search Google and extract the following information: ${query}
-    
-    Provide a detailed summary including all relevant details you find such as:
-    - Developer and publisher names
-    - All platforms (PC, Windows, Mac, Linux, PlayStation, Xbox, Nintendo Switch, Steam Deck, etc.)
-    - Price information
-    - Sales figures (copies sold, revenue)
-    - Player counts (current players, peak players)
-    - Review counts and scores
-    
-    Format your response as clear, structured text with labeled sections.`;
+    const prompt = `Search Google for: ${query}
+
+Return ONLY valid JSON matching this exact schema:
+${JSON.stringify(schema, null, 2)}
+
+Rules:
+- Return ONLY JSON, no prose or explanations
+- Use null for missing data
+- Normalize platform names to: Windows, Mac, Linux, PlayStation 5, Xbox Series X/S, Nintendo Switch, Steam Deck
+- Extract exact prices in USD (e.g., 14.99 or null)
+- Include source URLs in the "sources" array
+- For free games, set priceUSD to 0 and currency to "free"`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    let text = response.text();
     
-    console.log(`[WebSearch] Gemini found data (${text.length} chars):`, text.substring(0, 500));
-    return text;
+    // Strip code fences if present
+    text = text.replace(/```json|```/g, "").trim();
+    
+    // Parse JSON
+    const data = JSON.parse(text);
+    
+    // Extract grounding metadata
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const grounded = groundingChunks.length > 0;
+    const sources = groundingChunks
+      .map((chunk: any) => chunk.web?.uri)
+      .filter(Boolean);
+    
+    console.log(`[WebSearch] Found ${sources.length} grounded sources:`, sources);
+    
+    if (text.length < 20) {
+      console.warn(`[WebSearch] Suspiciously short response for query: ${query}`);
+    }
+    
+    return { data, grounded, sources };
   } catch (error) {
     console.error('[WebSearch] Gemini search error:', error);
     throw error;
   }
-}
-
-function extractDeveloperPublisher(searchText: string, gameTitle: string): {
-  developer?: string;
-  publisher?: string;
-} {
-  const result: { developer?: string; publisher?: string } = {};
-  
-  // Look for developer patterns
-  const devPatterns = [
-    /Developer[:\s]+([^,\n]+)/i,
-    /Developed by[:\s]+([^,\n]+)/i,
-    /Created by[:\s]+([^,\n]+)/i,
-  ];
-  
-  for (const pattern of devPatterns) {
-    const match = searchText.match(pattern);
-    if (match && match[1]) {
-      result.developer = match[1].trim();
-      break;
-    }
-  }
-  
-  // Look for publisher patterns
-  const pubPatterns = [
-    /Publisher[:\s]+([^,\n]+)/i,
-    /Published by[:\s]+([^,\n]+)/i,
-  ];
-  
-  for (const pattern of pubPatterns) {
-    const match = searchText.match(pattern);
-    if (match && match[1]) {
-      result.publisher = match[1].trim();
-      break;
-    }
-  }
-  
-  return result;
-}
-
-function extractPlatforms(searchText: string): string[] {
-  const platforms: Set<string> = new Set();
-  
-  const platformKeywords = [
-    { keyword: /Windows/i, platform: "Windows" },
-    { keyword: /Mac\s?OS|macOS/i, platform: "Mac" },
-    { keyword: /Linux/i, platform: "Linux" },
-    { keyword: /Steam\s?Deck/i, platform: "Steam Deck" },
-    { keyword: /PlayStation\s?5|PS5/i, platform: "PlayStation 5" },
-    { keyword: /PlayStation\s?4|PS4/i, platform: "PlayStation 4" },
-    { keyword: /Xbox\s?Series\s?X\/S|Xbox\s?Series/i, platform: "Xbox Series X/S" },
-    { keyword: /Xbox\s?One/i, platform: "Xbox One" },
-    { keyword: /Nintendo\s?Switch|Switch/i, platform: "Nintendo Switch" },
-  ];
-  
-  for (const { keyword, platform } of platformKeywords) {
-    if (keyword.test(searchText)) {
-      platforms.add(platform);
-    }
-  }
-  
-  return Array.from(platforms);
-}
-
-function extractSalesData(searchText: string, gameTitle: string): {
-  copiesSold?: number;
-  salesMilestone?: string;
-  estimatedOwners?: string;
-  estimatedRevenue?: string;
-} {
-  const result: {
-    copiesSold?: number;
-    salesMilestone?: string;
-    estimatedOwners?: string;
-    estimatedRevenue?: string;
-  } = {};
-  
-  // Look for exact sales numbers
-  const salesPatterns = [
-    /sold\s+over\s+([\d,]+)\s+(million|thousand|copies)/i,
-    /([\d,]+)\s+(million|thousand)?\s+copies\s+sold/i,
-    /([\d.]+)M?\s+units\s+sold/i,
-  ];
-  
-  for (const pattern of salesPatterns) {
-    const match = searchText.match(pattern);
-    if (match) {
-      let number = parseFloat(match[1].replace(/,/g, ''));
-      const unit = match[2]?.toLowerCase();
-      
-      if (unit === 'million' || match[0].includes('M')) {
-        number *= 1000000;
-      } else if (unit === 'thousand') {
-        number *= 1000;
-      }
-      
-      result.copiesSold = Math.floor(number);
-      result.salesMilestone = match[0].trim();
-      break;
-    }
-  }
-  
-  // Look for SteamSpy owner ranges
-  const ownersPattern = /Owners[:\s]+([\d,]+)\s*[±-]\s*([\d,]+)/i;
-  const ownersMatch = searchText.match(ownersPattern);
-  if (ownersMatch) {
-    const lower = parseInt(ownersMatch[1].replace(/,/g, ''));
-    const upper = parseInt(ownersMatch[2].replace(/,/g, ''));
-    result.estimatedOwners = `${lower.toLocaleString()} - ${upper.toLocaleString()}`;
-  }
-  
-  // Look for revenue estimates
-  const revenuePattern = /Revenue[:\s]+\$?([\d.]+)M?\s*-\s*\$?([\d.]+)M?/i;
-  const revenueMatch = searchText.match(revenuePattern);
-  if (revenueMatch) {
-    result.estimatedRevenue = `$${revenueMatch[1]}M - $${revenueMatch[2]}M`;
-  }
-  
-  return result;
-}
-
-function extractPlayerMetrics(searchText: string): {
-  currentPlayers?: number;
-  peakPlayers?: number;
-} {
-  const result: { currentPlayers?: number; peakPlayers?: number } = {};
-  
-  // Look for peak player counts
-  const peakPatterns = [
-    /peak[:\s]+([\d,]+)\s+players/i,
-    /all-time\s+peak[:\s]+([\d,]+)/i,
-  ];
-  
-  for (const pattern of peakPatterns) {
-    const match = searchText.match(pattern);
-    if (match) {
-      result.peakPlayers = parseInt(match[1].replace(/,/g, ''));
-      break;
-    }
-  }
-  
-  // Look for current player counts
-  const currentPattern = /current\s+players[:\s]+([\d,]+)/i;
-  const currentMatch = searchText.match(currentPattern);
-  if (currentMatch) {
-    result.currentPlayers = parseInt(currentMatch[1].replace(/,/g, ''));
-  }
-  
-  return result;
-}
-
-function extractReviewData(searchText: string): {
-  reviewCount?: number;
-  reviewScore?: number;
-} {
-  const result: { reviewCount?: number; reviewScore?: number } = {};
-  
-  // Look for review counts
-  const countPatterns = [
-    /([\d,]+)\s+user\s+reviews/i,
-    /([\d,]+)\s+reviews/i,
-  ];
-  
-  for (const pattern of countPatterns) {
-    const match = searchText.match(pattern);
-    if (match) {
-      result.reviewCount = parseInt(match[1].replace(/,/g, ''));
-      break;
-    }
-  }
-  
-  // Look for review scores
-  const scorePatterns = [
-    /([\d]+)%\s+(positive|recommended)/i,
-    /score[:\s]+([\d]+)/i,
-  ];
-  
-  for (const pattern of scorePatterns) {
-    const match = searchText.match(pattern);
-    if (match) {
-      result.reviewScore = parseInt(match[1]);
-      break;
-    }
-  }
-  
-  return result;
 }
