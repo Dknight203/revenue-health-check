@@ -1,4 +1,5 @@
 import { GameMetadata } from "@/types/analyzer";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function searchGameData(
   gameTitle: string,
@@ -71,32 +72,35 @@ export async function searchGameData(
 }
 
 async function performWebSearch(query: string, numResults: number = 5): Promise<string> {
-  console.log(`[WebSearch] Searching: ${query}`);
+  console.log(`[WebSearch] Gemini search: ${query}`);
   
   try {
-    const response = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${numResults}`, {
-      headers: {
-        'Accept': 'application/json',
-      }
+    const genAI = new GoogleGenerativeAI("AIzaSyDIiYmV7KipsHjXu7au3jxVTaJLZ0GWm2A");
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.0-flash-exp",
+      tools: [{ googleSearchRetrieval: {} }]
     });
 
-    if (!response.ok) {
-      console.warn(`[WebSearch] Search failed: ${response.status}`);
-      return "";
-    }
+    const prompt = `Search Google and extract the following information: ${query}
+    
+    Provide a detailed summary including all relevant details you find such as:
+    - Developer and publisher names
+    - All platforms (PC, Windows, Mac, Linux, PlayStation, Xbox, Nintendo Switch, Steam Deck, etc.)
+    - Price information
+    - Sales figures (copies sold, revenue)
+    - Player counts (current players, peak players)
+    - Review counts and scores
+    
+    Format your response as clear, structured text with labeled sections.`;
 
-    const data = await response.json();
-    const results = data.web?.results || [];
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
     
-    // Combine all result text content
-    const combinedText = results.map((r: any) => {
-      return `${r.title || ''}\n${r.description || ''}\n${r.extra_snippets?.join('\n') || ''}`;
-    }).join('\n\n');
-    
-    console.log(`[WebSearch] Found ${results.length} results`);
-    return combinedText;
+    console.log(`[WebSearch] Gemini found data (${text.length} chars)`);
+    return text;
   } catch (error) {
-    console.error('[WebSearch] Error:', error);
+    console.error('[WebSearch] Gemini search error:', error);
     return "";
   }
 }
