@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { GoogleGenerativeAI, DynamicRetrievalMode } from "npm:@google/generative-ai@^0.21.0";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
+
+// Define DynamicRetrievalMode enum since it's not exported properly
+const DynamicRetrievalMode = {
+  MODE_DYNAMIC: "MODE_DYNAMIC" as const,
+  MODE_UNSPECIFIED: "MODE_UNSPECIFIED" as const,
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,7 +35,7 @@ async function performGroundedJSON(
     tools: [{
       googleSearchRetrieval: {
         dynamicRetrievalConfig: {
-          mode: DynamicRetrievalMode.MODE_DYNAMIC,
+          mode: "MODE_DYNAMIC" as any,
           dynamicThreshold: 0.3
         }
       }
@@ -62,8 +68,8 @@ Rules:
   // Parse JSON
   const data = JSON.parse(text);
 
-  // Extract grounding metadata
-  const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+  // Extract grounding metadata (note: API has typo - it's "groundingChuncks" not "groundingChunks")
+  const groundingChunks = (response.candidates?.[0]?.groundingMetadata as any)?.groundingChuncks || [];
   const grounded = groundingChunks.length > 0;
   const citations = groundingChunks
     .map((chunk: any) => chunk.web?.uri)
